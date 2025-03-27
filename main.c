@@ -4,10 +4,10 @@
 * Description:
 * This file provides example usage of SCB-UART self tests for PSoC 4.
 *
-* Related Document:See README.md
+* Related Document: See README.md
 *
 ********************************************************************************
-* Copyright 2023-2024, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2023-2025, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -42,10 +42,9 @@
 /*******************************************************************************
 * Includes
 ********************************************************************************/
-
+#include <stdio.h>
 #include "cy_pdl.h"
 #include "cybsp.h"
-#include "cy_retarget_io.h"
 
 #include "SelfTest_UART_SCB.h"
 
@@ -60,6 +59,7 @@
 *******************************************************************************/
 
 static cy_stc_scb_uart_context_t CYBSP_DUT_UART_context;
+char uart_print_buff[100]={0};
 
 /*******************************************************************************
 * Function Prototypes
@@ -97,6 +97,7 @@ int main(void)
 {
     cy_rslt_t result;
     cy_en_smartio_status_t smart_res;
+    cy_stc_scb_uart_context_t CYBSP_UART_context;
     uint16_t count = 0u;
     
     uint8_t ret;
@@ -113,16 +114,13 @@ int main(void)
     /* Enable global interrupts */
     __enable_irq();
     
-    /* Initialize retarget-io to use the debug UART port */
-    result = cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX, CY_RETARGET_IO_BAUDRATE);
-    if (result != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-    }
+    /* Configure and enable the UART peripheral */
+    Cy_SCB_UART_Init(CYBSP_UART_HW, &CYBSP_UART_config, &CYBSP_UART_context);
+    Cy_SCB_UART_Enable(CYBSP_UART_HW);
 
     /* \x1b[2J\x1b[;H - ANSI ESC sequence for clear screen */
-    printf("\x1b[2J\x1b[;H");
-    printf("\r\nClass-B Safety Test: UART Loopback\r\n");
+    Cy_SCB_UART_PutString(CYBSP_UART_HW, "\x1b[2J\x1b[;H");
+    Cy_SCB_UART_PutString(CYBSP_UART_HW, "\r\nClass-B Safety Test: UART Loopback\r\n");
 
     /* Init UART SelfTest*/
     SelfTest_UART_SCB_Init();
@@ -195,12 +193,13 @@ int main(void)
         if ((PASS_COMPLETE_STATUS != ret) && (PASS_STILL_TESTING_STATUS != ret))
         {
             /* Process error */
-            printf("\r\nUART SCB test: error ");
+            Cy_SCB_UART_PutString(CYBSP_UART_HW, "\r\nUART SCB test: error ");
             while (1);
         }
 
         /* Print test counter */
-        printf("\rUART SCB loopback testing using Smart-IO... count=%d", count);
+        sprintf(uart_print_buff, "\rUART SCB loopback testing using Smart-IO... count=%d", count);
+        Cy_SCB_UART_PutString(CYBSP_UART_HW, uart_print_buff);
 
         count++;
         if (count > MAX_INDEX_VAL)
